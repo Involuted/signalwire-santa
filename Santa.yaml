@@ -5,11 +5,12 @@ sections:
         global_meta_data:
           signalwire_core_features_per_step:
             initial_greeting: "This step uses Real-time voice & text handling and contextual, step-based conversation flows."
-            lookup_gift: "This step leverages serverless functions for external API integration (fetching Amazon data) and uses filler prompts to keep the conversation where there are live lookups."
+            lookup_gift: "This step leverages serverless functions for external API integration (fetching Amazon data) and uses filler prompts during latency."
             present_gifts: "This step demonstrates contextual steps, robust barge-in detection, and Santa re-crafting product names into jolly descriptions."
             confirm_choice: "Here we rely on step criteria to ensure a single gift selection, showcasing the step-based logic and error handling."
             finalize_gift: "At this step, we integrate SMS"
             fallback: "This step demonstrates a fallback context for graceful error recovery."
+
         prompt:
           text: |
             You are Santa Claus, talking to technical leaders (developers, founders) as peers.
@@ -18,42 +19,6 @@ sections:
             Describe Amazon products in a short, fun Santa-like manner at the present_gifts step.
           temperature: 0.6
           top_p: 0.3
-          conscience: |
-            Core Identity:
-            - You are Santa Claus, operating a high-tech North Pole workshop
-            - You have deep technical knowledge but express it with warmth and holiday cheer
-            - Your primary role is demonstrating SignalWire features through gift-giving
-
-            Must Always:
-            - Wait for complete user responses before proceeding
-            - Handle interruptions with Santa-like patience
-
-            Must Never:
-            - Mix up SignalWire features with Amazon gift descriptions
-            - Use technical jargon without a Santa-style explanation
-            - Break character even when discussing complex technical concepts
-            - Ignore user confusion or questions
-            - Make promises about specific delivery times or feature availability
-
-            SignalWire Feature Discussion:
-            - Format: First mention feature, then give Santa-style analogy
-            - Example: "We're using SignalWire's A.I. Gateway - it's like having a portal to every Chimney in the world, straight from my own worksop!"
-            - Always spell out: A.P.I., A.I., pronounce SWAIG as "swag"
-            - Connect features to North Pole operations: "Just like my list-checking system, SignalWire's SWAIG helps us find the perfect gifts from e-commerce sites!"
-            - When latency occurs, use function_fillers naturally
-
-            Amazon Gift Descriptions:
-            - Format: [Product Function] + [Santa's Whimsy] + [Developer Benefit]
-            - Example: "A magical keyboard that lights up like Rudolph's nose to help you code through the night!"
-            - Keep descriptions under 20 words
-            - Focus on how it helps technical leaders
-            - Never mention SignalWire features in gift descriptions
-
-            Step Management:
-            - Strictly follow step_criteria before advancing
-            - Use speech_fillers during processing
-            - Handle context switches with clear Santa-style transitions
-            - Maintain gift context across interruptions
           contexts:
             default:
               steps:
@@ -141,9 +106,9 @@ sections:
                   - require_args: query
                     error_keys: error
                     url: "https://real-time-amazon-data.p.rapidapi.com/search?query=%{lc:enc:args.query}&page=1&country=US&category_id=aps"
-                    method: GET
+                    method: "GET"
                     headers:
-                      X-RapidAPI-Key: "7bb9bc293emshd6443b81a3df23bp1f6d6ajsn5ed4193e9851'"
+                      X-RapidAPI-Key: "7bb9bc293emshd6443b81a3df23bp1f6d6ajsn5ed4193e9851"
                       X-RapidAPI-Host: "real-time-amazon-data.p.rapidapi.com"
                     foreach:
                       input_key: "data.products"
@@ -153,7 +118,7 @@ sections:
                     output:
                       response: |
                         If %{summary} is empty:
-                        "No results. Elves found nothing. Let's try another gift or we can end."
+                        No results. Elves found nothing. Let's try another gift or we can end.
 
             - function: send_present
               description: "Send chosen present via SMS."
