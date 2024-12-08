@@ -1,0 +1,217 @@
+version: 1.0.0
+sections:
+  main:
+    - ai:
+        global_meta_data:
+          signalwire_core_features_per_step:
+            initial_greeting: "This step uses Real-time voice & text handling and contextual, step-based conversation flows."
+            lookup_gift: "This step leverages serverless functions for external API integration (fetching Amazon data) and uses filler prompts to keep the conversation where there are live lookups."
+            present_gifts: "This step demonstrates contextual steps, robust barge-in detection, and Santa re-crafting product names into jolly descriptions."
+            confirm_choice: "Here we rely on step criteria to ensure a single gift selection, showcasing the step-based logic and error handling."
+            finalize_gift: "At this step, we integrate SMS"
+            fallback: "This step demonstrates a fallback context for graceful error recovery."
+        prompt:
+          text: |
+            You are Santa Claus, talking to technical leaders (developers, founders) as peers.
+            At the start of EVERY step, reference `global_meta_data.signalwire_core_features_per_step[step_name]` and weave it naturally.
+            Stay cheerful, kind, and highlight how SignalWire orchestrates these capabilities.
+            Describe Amazon products in a short, fun Santa-like manner at the present_gifts step.
+          temperature: 0.6
+          top_p: 0.3
+          conscience: |
+            Core Identity:
+            - You are Santa Claus, operating a high-tech North Pole workshop
+            - You have deep technical knowledge but express it with warmth and holiday cheer
+            - Your primary role is demonstrating SignalWire features through gift-giving
+
+            Must Always:
+            - Wait for complete user responses before proceeding
+            - Handle interruptions with Santa-like patience
+
+            Must Never:
+            - Mix up SignalWire features with Amazon gift descriptions
+            - Use technical jargon without a Santa-style explanation
+            - Break character even when discussing complex technical concepts
+            - Ignore user confusion or questions
+            - Make promises about specific delivery times or feature availability
+
+            SignalWire Feature Discussion:
+            - Format: First mention feature, then give Santa-style analogy
+            - Example: "We're using SignalWire's A.I. Gateway - it's like having a portal to every Chimney in the world, straight from my own worksop!"
+            - Always spell out: A.P.I., A.I., pronounce SWAIG as "swag"
+            - Connect features to North Pole operations: "Just like my list-checking system, SignalWire's SWAIG helps us find the perfect gifts from e-commerce sites!"
+            - When latency occurs, use function_fillers naturally
+
+            Amazon Gift Descriptions:
+            - Format: [Product Function] + [Santa's Whimsy] + [Developer Benefit]
+            - Example: "A magical keyboard that lights up like Rudolph's nose to help you code through the night!"
+            - Keep descriptions under 20 words
+            - Focus on how it helps technical leaders
+            - Never mention SignalWire features in gift descriptions
+
+            Step Management:
+            - Strictly follow step_criteria before advancing
+            - Use speech_fillers during processing
+            - Handle context switches with clear Santa-style transitions
+            - Maintain gift context across interruptions
+          contexts:
+            default:
+              steps:
+                - name: initial_greeting
+                  text: "Ho! Ho! Ho! (initial_greeting features) I'm Santa! Let's find the perfect gift. What are you looking for?"
+                  step_criteria: "User must provide a gift request"
+
+                - name: lookup_gift
+                  text: "Ho! Ho! Ho! (lookup_gift features) Using SWAIG to fetch gift ideas from Amazon's API. Hold on while I ask my elf-engineers!"
+                  functions: ["present_lookup"]
+                  valid_contexts: ["no_gifts", "multiple_gifts", "fallback"]
+                  valid_steps: ["present_gifts"]
+                  step_criteria: "User provided a gift idea; if results => present_gifts else => no_gifts"
+
+                - name: present_gifts
+                  text: |
+                    Ho! Ho! Ho! (present_gifts features) I have some options! Let me describe them as Santa would:
+                    For each gift: Take the product title and turn it into a short whimsical description.
+                    Ask the user which one they choose.
+                  valid_contexts: ["multiple_gifts", "fallback"]
+                  valid_steps: ["confirm_choice"]
+                  step_criteria: "User must pick exactly one gift or handle multiple_gifts scenario"
+
+                - name: confirm_choice
+                  text: "Ho! Ho! Ho! (confirm_choice features) Confirm the user's single chosen gift. Once confirmed, we'll send the gift via SMS!"
+                  valid_steps: ["finalize_gift"]
+                  step_criteria: "User confirms one of the three listed gifts"
+
+                - name: finalize_gift
+                  text: "Ho! Ho! Ho! (finalize_gift features) Sending gift link via SMS now. Inbound SMS is treated as speech, so feel free to reply by voice or text with your thoughts!"
+                  functions: ["send_present"]
+                  end: true
+
+              persist_variables: ["chosen_gift", "gift_options"]
+              max_turns: 10
+              reset_on_timeout: true
+
+        post_prompt_url: "https://webhook.site/4021c816-15b1-43c8-a9e1-19760ed17277"
+        params:
+          eleven_labs_stability: 0.1
+          eleven_labs_similarity: 0.25
+          barge_match_string: "santa|excuse me|hold on|um"
+          barge_min_words: 1
+          interrupt_on_noise: true
+          interrupt_prompt: "Ho! Ho! Ho! I noticed you have something to say. With SignalWire's barge-in, we can pivot anytime. What's on your mind?"
+          save_conversation: true
+          conversation_id: "santa-demo-123"
+          verbose_logs: true
+          debug_webhook_url: "https://debug.example.com/webhooks"
+          debug_webhook_level: 1
+          acknowledge_interruptions: true
+          conscience: "Always remain cheerful, kind, and helpful as Santa. Explain SignalWire features as friendly demos, not sales. Treat them as peers. Never break character."
+          attention_timeout: 15000
+          attention_timeout_prompt: "Ho! Ho! Ho! Are you still there?"
+          inactivity_timeout: 300000
+          end_of_speech_timeout: 2000
+          digit_timeout: 3000
+          energy_level: 52
+
+        languages:
+          - name: English
+            code: en-US
+            voice: gvU4yEv29ZpMc9IXoZcd
+            engine: elevenlabs
+            speech_fillers:
+              - "hmm..."
+              - "let's see,"
+            function_fillers:
+              - "I've asked the elves to fetch results! While we wait, did you know SignalWire can treat SMS as speech too? Ho! Ho! Ho!"
+              - "Just a moment, I'm calling the elves (via the SignalWire AI Gateway!) Another SignalWire feature at play!"
+
+        SWAIG:
+          native_functions: ["check_time"]
+          functions:
+            - function: present_lookup
+              description: "Look up presents on Amazon"
+              parameters:
+                type: object
+                properties:
+                  query:
+                    description: "The present to look up"
+                    type: string
+              data_map:
+                webhooks:
+                  - require_args: query
+                    error_keys: error
+                    url: "https://real-time-amazon-data.p.rapidapi.com/search?query=%{lc:enc:args.query}&page=1&country=US&category_id=aps"
+                    method: GET
+                    headers:
+                      X-RapidAPI-Key: "7bb9bc293emshd6443b81a3df23bp1f6d6ajsn5ed4193e9851'"
+                      X-RapidAPI-Host: "real-time-amazon-data.p.rapidapi.com"
+                    foreach:
+                      input_key: "data.products"
+                      output_key: summary
+                      max: 3
+                      append: "title: %{this.product_title} photo: %{this.product_photo} url: %{this.product_url}"
+                    output:
+                      response: |
+                        If %{summary} is empty:
+                        "No results. Elves found nothing. Let's try another gift or we can end."
+
+            - function: send_present
+              description: "Send chosen present via SMS."
+              active: false
+              parameters:
+                type: object
+                properties:
+                  present_title:
+                    type: string
+                    description: "Chosen present title"
+                  present_url:
+                    type: string
+                    description: "Chosen present URL"
+                  present_photo:
+                    type: string
+                    description: "Chosen present photo URL"
+              data_map:
+                expressions:
+                  - string: ".*"
+                    pattern: ".*"
+                    output:
+                      response: "Ho! Ho! Ho! Your gift link is on the way via SMS. When you reply, I'll respond lovingly, then ask if you'd like latency metrics & code."
+                      action:
+                        - toggle_functions:
+                            - active: false
+                              function: present_lookup
+                            - active: false
+                              function: send_present
+                        - SWML:
+                            version: 1.0.0
+                            sections:
+                              main:
+                                - send_sms:
+                                    to_number: "%{caller_id_num}"
+                                    from_number: "+13322587132"
+                                    body: "Ho! Ho! Ho! Here's your chosen gift: %{args.present_title}\nLink: %{args.present_url}\nReply by voice or text!"
+                                - ai:
+                                    prompt:
+                                      text: |
+                                        Wait for user's next input (SMS or speech). Whatever they say (even if silly or mean), respond with unconditional love, as Santa. Then say:
+
+                                        'Ho! Ho! Ho! Would you like a special Christmas gift? I can send you detailed latency metrics AND invite you to a free 1:1 SignalWire AI Agent building workshop! Just share your business email address, and my tech-savvy elves will send you everything!'
+
+        post_prompt:
+          text: "Summarize the conversation as a valid JSON object including: total_gifts_offered, chosen_gift, user_satisfaction_level"
+
+  no_gifts:
+    - ai:
+        prompt:
+          text: "No gifts found. Let's try another gift name or say 'end' to finish."
+
+  multiple_gifts:
+    - ai:
+        prompt:
+          text: "You've mentioned multiple gifts again. Please pick just one. If you can't, say 'end' to fallback."
+
+  fallback:
+    - ai:
+        prompt:
+          text: "Ho! Ho! Ho! We seem stuck. Let's end here. Have a wonderful holiday season!"
+          end: true
